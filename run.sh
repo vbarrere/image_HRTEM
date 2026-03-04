@@ -8,17 +8,12 @@ path_msa_prm=$path_hrtem/msa_prm
 path_wavimg_prm=$path_hrtem/wavimg_prm
 path_img=$path_hrtem/HRTEM_image
 
-# (Devient new path) path_xyz='/home/victor.barrere@crmd.cnrs-orleans.fr/Documents/Data/Data_processed/XYZ'
-
-# Creation of the new XYZ files with the cluster separation
 mkdir -p $path_new_xyz
 rm -f $path_processed/data.dat
 
 $ovitos cluster_separation.py
 $ovitos particle_analyze.py
 
-
-# Image creation
 export electron_energy=300
 export nx=64
 export ny=64
