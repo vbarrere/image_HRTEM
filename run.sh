@@ -63,3 +63,4 @@ done
 
 end_time=$(date +%s.%N)
 echo "Execution time: $(echo "$end_time - $start_time" | bc) seconds"
+#Environs 40 secondes pour 44 simulations.
