@@ -9,25 +9,19 @@ path_xyz = os.getenv("path_xyz")
 path_processed = os.getenv("path_processed")
 path_new_xyz = os.getenv("path_new_xyz")
 
+md_data = np.genfromtxt(os.path.join(path_xyz, "d.dat"), dtype=None)
+
 files = os.listdir(path_new_xyz)
 for xyz_file in files:
 
     i_sim = xyz_file.split(".")[0]
     path_file = os.path.join(path_new_xyz, xyz_file)
 
-    with open(path_xyz + "d.dat", "r") as file:
-        lines = file.readlines()
-        i = 0
-        res = False
-        while not res and i < len(lines):
-            line = lines[i].split()
-            if line[0] == i_sim.split("_")[0]:
-                res = True
-            i += 1
-        n_steps = int(line[3])
-        initial_temperature = float(line[4])
+    n_steps = int(md_data[md_data[:, 0] == int(i_sim.split("_")[0])][3])
+    initial_temperature = float(md_data[md_data[:, 0] == int(i_sim.split("_")[0])][4])
+
     node = import_file(path_file)
-        
+
     surface_mod = ConstructSurfaceModifier()
     node.modifiers.append(surface_mod)
     cna_mod = CommonNeighborAnalysisModifier()
@@ -36,14 +30,12 @@ for xyz_file in files:
     node.modifiers.append(bond_angle_mod)
     csp_mod = CentroSymmetryModifier()
     node.modifiers.append(csp_mod)
-    
 
     data = node.compute()
     pos = data.particle_properties.position.array
     n_atoms = pos.shape[0]
     epot = data.particle_properties['epot'].array
     box = data.cell.matrix.diagonal()
-        
 
     surface_area = node.output.attributes['ConstructSurfaceMesh.surface_area']
     solid_volume = node.output.attributes['ConstructSurfaceMesh.solid_volume']
@@ -53,8 +45,7 @@ for xyz_file in files:
     cna_hcp = node.output.attributes['CommonNeighborAnalysis.counts.HCP']
     cna_bcc = node.output.attributes['CommonNeighborAnalysis.counts.BCC']
     cna_ico = node.output.attributes['CommonNeighborAnalysis.counts.ICO']
-        
-        
+
     bond_angle_others = node.output.attributes['BondAngleAnalysis.counts.OTHER']
     bond_angle_fcc = node.output.attributes['BondAngleAnalysis.counts.FCC']
     bond_angle_hcp = node.output.attributes['BondAngleAnalysis.counts.HCP']
@@ -78,7 +69,8 @@ for xyz_file in files:
     else:
         r_cm2 = np.array([np.nan, np.nan, np.nan])
     r_cm = np.sum(pos, axis=0) / n_atoms
-    
+    pos = pos - box * np.round((pos - r_cm) / box)
+
     d_com = np.linalg.norm(r_cm1 - r_cm2)
 
     gyration_radius = np.sqrt(np.sum(np.linalg.norm(pos, axis=1)**2) / n_atoms)

@@ -22,9 +22,7 @@ with open(file_xyz, 'r') as xyz_file:
     a = np.linalg.norm(np.array([float(comment_line[0]), float(comment_line[1]), float(comment_line[2])]))*0.1
     b = np.linalg.norm(np.array([float(comment_line[3]), float(comment_line[4]), float(comment_line[5])]))*0.1
     c = np.linalg.norm(np.array([float(comment_line[6]), float(comment_line[7]), float(comment_line[8])]))*0.1
-    
-    
-    
+
     pos = np.zeros((n_atoms, 3))
     symbols = []
     atom_lines = lines[2:2+n_atoms]
@@ -48,9 +46,9 @@ with open(file_cel, 'w') as cel_file:
         z = pos[i_atom][2]/c
         occupancy = 1.0
         if symbols[i_atom] == 'Ag':
-            debye_waller_factor = 0.008
+            debye_waller_factor = 0.008 # XXX
         elif symbols[i_atom] == 'Co':
-            debye_waller_factor = 0.004
+            debye_waller_factor = 0.004 # XXX
         else:
             exit(f"Error: unknown element {symbols[i_atom]}")
         print(symbols[i_atom], x, y, z, occupancy, debye_waller_factor, 0, 0, 0, file=cel_file)
