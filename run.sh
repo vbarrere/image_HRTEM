@@ -20,8 +20,6 @@ export electron_energy=300
 export nx=64
 export ny=64
 export nz=10
-export Nlp=0
-export Nabr=0
 
 mkdir -p $path_hrtem
 
