@@ -58,7 +58,6 @@ do
     
     ./hrtem_image.py
     rm -r $path_id_sim
-
 done
 
 end_time=$(date +%s.%N)
