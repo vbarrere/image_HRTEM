@@ -3,19 +3,21 @@
 import os
 import subprocess
 import sys
-from matplotlib.pyplot import plt
+import matplotlib.pyplot as plt
 import numpy as np
 
-box = 100   # EN ANGSTROM
+process_id = os.getenv("process_id")
+
+box = 100.0   # EN ANGSTROM
 n_variants = 10
-dbf_ag = 0.008
-dbf_co = 0.004
+dbf_ag = 0.008 # XXX
+dbf_co = 0.004 # XXX
 nx = 64
 ny = 64
 nz = int(os.getenv('nz'))
 electron_energy = float(os.getenv('electron_energy'))
 count_min = 500
-count_max = 1000   
+count_max = 1000
 
 aberrations = np.array([[0.0, 0.0],    # image shift
               [-4.0, -8.0],  # defocus
@@ -55,7 +57,6 @@ with open(sys.argv[1], 'r') as xyz_file:
     nat1_in = np.sum(~mask_out_atm1)
     nat2_in = np.sum(~mask_out_atm2)
 
-        
     if nat1 != 0:
         r_cm1 = np.sum(pos_atm1, axis=0) / nat1
     else:
@@ -64,45 +65,46 @@ with open(sys.argv[1], 'r') as xyz_file:
         r_cm2 = np.sum(pos_atm2, axis=0) / nat2
     else:
         r_cm2 = np.array([np.nan, np.nan, np.nan])
-
+    
     d_com = np.linalg.norm(r_cm1 - r_cm2)
-
-
-
-
+    r_cm = np.sum(pos_ini, axis=0) / n_atoms
 
 for i_variant in range(n_variants):
     phi = np.random.uniform(0, 2*np.pi)
     theta = np.random.uniform(0, np.pi)
     rot_matrix = np.array([[np.cos(phi)*np.cos(theta), -np.sin(phi), np.cos(phi)*np.sin(theta)],
-                        [np.sin(phi)*np.cos(theta), np.cos(phi), np.sin(phi)*np.sin(theta)],
-                        [-np.sin(theta), 0, np.cos(theta)]])
+                           [np.sin(phi)*np.cos(theta), np.cos(phi), np.sin(phi)*np.sin(theta)],
+                           [-np.sin(theta), 0, np.cos(theta)]])
     pos = np.dot(pos_ini, rot_matrix) * np.random.uniform(0.95, 1.05)
 
-    with open("coord.cel", 'w') as cel_file:
-        print("", file=cel_file)
+    atom_types = set(symbols)
+    with open(f"tmp_{process_id}/coord.cel", 'w') as cel_file:
+        res = ""
+        for elem in atom_types:
+            res += elem
+        print(f"{res} {n_atoms}", file=cel_file)
         print(0, box, box, box, 90.0, 90.0, 90.0, file=cel_file)
         for i_atom in range(n_atoms):
-            x = pos[i_atom][0]/box
-            y = pos[i_atom][1]/box
-            z = pos[i_atom][2]/box
+            x = pos[i_atom][0]/box + 0.5
+            y = pos[i_atom][1]/box + 0.5
+            z = pos[i_atom][2]/box + 0.5
             occupancy = 1.0
             if symbols[i_atom] == 'Ag':
-                debye_waller_factor = dbf_ag # XXX
+                debye_waller_factor = dbf_ag
             elif symbols[i_atom] == 'Co':
-                debye_waller_factor = dbf_co # XXX
+                debye_waller_factor = dbf_co
             else:
                 exit(f"Error: unknown element {symbols[i_atom]}")
             print(symbols[i_atom], x, y, z, occupancy, debye_waller_factor, 0, 0, 0, file=cel_file)
-
+    
     aberrations_values = np.zeros_like(aberrations)
 
-    with open('wavimg.prm', "w") as f:
-        print(f"'msa_{nz}.wav'", file=f)      # line 1
+    with open(f'tmp_{process_id}/wavimg.prm', "w") as f:
+        print(f"'tmp_{process_id}/msa_sl0{nz}.wav'", file=f)      # line 1
         print(f"{nx} {ny}", file=f)
         print(f"{0.1*box/nx} {0.1*box/ny}", file=f)
         print(f"{electron_energy}", file=f)
-        print(f"{0}", file=f)               # line 5
+        print(f"{0}", file=f)   # line 5
         print(f"'image.dat'", file=f)
         print(f"{nx} {ny}", file=f)
         print(f"{0} {1.0} {1.0} {0.0}", file=f)
@@ -125,12 +127,11 @@ for i_variant in range(n_variants):
         print(f"{250.0} {0.03}", file=f)   # line 19+Nabr
         print(f"{0.0} {0.0}", file=f)
         print(f"{0}", file=f)
-
-    subprocess.run(["celslc", "-cel", "coord.cel", "-slc", "slice", "-nx", str(nx), "-ny", str(ny), "-nz", str(nz), "-ht", str(electron_energy), "-dwf", "-abs"])
-    subprocess.run(["msa", "-prm", "msa.prm", "-out", f"msa.wav", "/ctem"])
-    subprocess.run(["wavimg", "-prm", "wavimg.prm", "-out", "image.dat"])
-
-    data = np.fromfile("image.dat", dtype=np.float32)
+    
+    subprocess.run(["celslc", "-cel", f"tmp_{process_id}/coord.cel", "-slc", f"tmp_{process_id}/slice", "-nx", str(nx), "-ny", str(ny), "-nz", str(nz), "-ht", str(electron_energy), "-dwf", "-abs"], stdout=subprocess.DEVNULL)
+    subprocess.run(["msa", "-prm", f"tmp_{process_id}/msa.prm", "-out", f"tmp_{process_id}/msa.wav", "/ctem"], stdout=subprocess.DEVNULL)
+    subprocess.run(["wavimg", "-prm", f"tmp_{process_id}/wavimg.prm", "-out", f"tmp_{process_id}/image.dat"], stdout=subprocess.DEVNULL)
+    data = np.fromfile(f"tmp_{process_id}/image.dat", dtype=np.float32)
     counts = np.random.uniform(count_min, count_max)
     image = np.random.poisson(counts*data.reshape((nx, ny)))
     plt.imshow(image, cmap='gray')
@@ -138,3 +139,13 @@ for i_variant in range(n_variants):
     out_image = f"{os.path.basename(sys.argv[1]).split('.')[0]}_{i_variant}.png"
     plt.savefig(f"hrtem_images/{out_image}", bbox_inches='tight', pad_inches=0)
     plt.close()
+
+    f = open(f"tmp_{process_id}/tmp.dat", "r")
+    contenu = f.read().strip()
+    param = contenu.split("\t")
+    f.close()
+    print(f"process : {process_id} ; data :{param[0]} {param[1]} {param[2]} {param[3]} {param[4]} {param[5]} {param[6]} {param[7]} {param[8]} {param[9]} {param[10]} {param[11]} {param[12]} {param[13]} {param[14]} {param[15]} {param[16]} {param[17]} {gyration_radius} {nat1} {nat2} {nat1_out} {nat2_out} {nat1_in} {nat2_in} {r_cm1[0]} {r_cm1[1]} {r_cm1[2]} {r_cm2[0]} {r_cm2[1]} {r_cm2[2]} {r_cm[0]} {r_cm[1]} {r_cm[2]} {d_com} {counts} {phi} {theta} {aberrations_values[0][0]} {aberrations_values[0][1]} {aberrations_values[1][0]} {aberrations_values[1][1]} {aberrations_values[2][0]} {aberrations_values[2][1]} {aberrations_values[3][0]} {aberrations_values[3][1]} {aberrations_values[4][0]} {aberrations_values[2][0]} {aberrations_values[2][1]} {aberrations_values[3][0]} {aberrations_values[3][1]} {aberrations_values[4][0]} {aberrations_values[4][1]} {aberrations_values[5][0]} {aberrations_values[5][1]} {aberrations_values[6][0]} {aberrations_values[6][1]}")
+
+    f = open(f"tmp_{process_id}/data.dat", "a")
+    print(param[0], param[1], param[2], param[3], param[4], param[5], param[6], param[7], param[8], param[9], param[10], param[11], param[12], param[13], param[14], param[15], param[16], param[17], gyration_radius, nat1, nat2, nat1_out, nat2_out, nat1_in, nat2_in, r_cm1[0], r_cm1[1], r_cm1[2], r_cm2[0], r_cm2[1], r_cm2[2], r_cm[0], r_cm[1], r_cm[2], d_com, counts, phi, theta, aberrations_values[0][0], aberrations_values[0][1], aberrations_values[1][0], aberrations_values[1][1], aberrations_values[2][0], aberrations_values[2][1], aberrations_values[3][0], aberrations_values[3][1], aberrations_values[4][0], aberrations_values[2][0], aberrations_values[2][1], aberrations_values[3][0], aberrations_values[3][1], aberrations_values[4][0], aberrations_values[4][1], aberrations_values[5][0], aberrations_values[5][1], aberrations_values[6][0], aberrations_values[6][1], sep="\t", file=f)
+    f.close()
