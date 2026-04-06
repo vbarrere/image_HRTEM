@@ -16,8 +16,8 @@ nx = 64
 ny = 64
 nz = int(os.getenv('nz'))
 electron_energy = float(os.getenv('electron_energy'))
-count_min = 500
-count_max = 1000
+count_min = 100
+count_max = 500
 
 aberrations = np.array([[0.0, 0.0],    # image shift
               [-4.0, -8.0],  # defocus
@@ -26,6 +26,9 @@ aberrations = np.array([[0.0, 0.0],    # image shift
               [0.0, 0.0],    # three-lobe aberration
               [0.0, 0.0],    # spherical aberration
               [0.0, 0.0]])   # star aberration
+
+md_data = np.genfromtxt(f"tmp_{process_id}/tmp.dat", dtype=str)
+first_column = np.array([row[0] for row in md_data])
 
 with open(sys.argv[1], 'r') as xyz_file:
     lines = xyz_file.readlines()
@@ -39,12 +42,20 @@ with open(sys.argv[1], 'r') as xyz_file:
         pos_ini[i_atom] = np.array([float(line[1]), float(line[2]), float(line[3])])
         symbols.append(line[0])
 
-    gyration_radius = np.sqrt(np.sum(np.linalg.norm(pos_ini, axis=1)**2) / n_atoms)
+for i_variant in range(n_variants):
+    phi = np.random.uniform(0, 2*np.pi)
+    theta = np.random.uniform(0, np.pi)
+    rot_matrix = np.array([[np.cos(phi)*np.cos(theta), -np.sin(phi), np.cos(phi)*np.sin(theta)],
+                           [np.sin(phi)*np.cos(theta), np.cos(phi), np.sin(phi)*np.sin(theta)],
+                           [-np.sin(theta), 0, np.cos(theta)]])
+    pos = np.dot(pos_ini, rot_matrix) * np.random.uniform(0.95, 1.05)
+
+    gyration_radius = np.sqrt(np.sum(np.linalg.norm(pos, axis=1)**2) / n_atoms)
 
     radius_limit = .8*gyration_radius
 
-    pos_atm1 = pos_ini[np.array(symbols) == 'Ag']
-    pos_atm2 = pos_ini[np.array(symbols) == 'Co']
+    pos_atm1 = pos[np.array(symbols) == 'Ag']
+    pos_atm2 = pos[np.array(symbols) == 'Co']
 
     mask_out_atm1 = np.linalg.norm(pos_atm1, axis=1) > radius_limit
     mask_out_atm2 = np.linalg.norm(pos_atm2, axis=1) > radius_limit
@@ -67,15 +78,8 @@ with open(sys.argv[1], 'r') as xyz_file:
         r_cm2 = np.array([np.nan, np.nan, np.nan])
     
     d_com = np.linalg.norm(r_cm1 - r_cm2)
-    r_cm = np.sum(pos_ini, axis=0) / n_atoms
+    r_cm = np.sum(pos, axis=0) / n_atoms
 
-for i_variant in range(n_variants):
-    phi = np.random.uniform(0, 2*np.pi)
-    theta = np.random.uniform(0, np.pi)
-    rot_matrix = np.array([[np.cos(phi)*np.cos(theta), -np.sin(phi), np.cos(phi)*np.sin(theta)],
-                           [np.sin(phi)*np.cos(theta), np.cos(phi), np.sin(phi)*np.sin(theta)],
-                           [-np.sin(theta), 0, np.cos(theta)]])
-    pos = np.dot(pos_ini, rot_matrix) * np.random.uniform(0.95, 1.05)
 
     atom_types = set(symbols)
     with open(f"tmp_{process_id}/coord.cel", 'w') as cel_file:
@@ -129,23 +133,24 @@ for i_variant in range(n_variants):
         print(f"{0}", file=f)
     
     subprocess.run(["celslc", "-cel", f"tmp_{process_id}/coord.cel", "-slc", f"tmp_{process_id}/slice", "-nx", str(nx), "-ny", str(ny), "-nz", str(nz), "-ht", str(electron_energy), "-dwf", "-abs"], stdout=subprocess.DEVNULL)
+    subprocess.run(["rm", "-f", f"tmp_{process_id}/coord.cel"])
     subprocess.run(["msa", "-prm", f"tmp_{process_id}/msa.prm", "-out", f"tmp_{process_id}/msa.wav", "/ctem"], stdout=subprocess.DEVNULL)
+    subprocess.run(["rm", "-f", f"tmp_{process_id}/slice*"])
     subprocess.run(["wavimg", "-prm", f"tmp_{process_id}/wavimg.prm", "-out", f"tmp_{process_id}/image.dat"], stdout=subprocess.DEVNULL)
+    subprocess.run(["rm", "-f", f"tmp_{process_id}/msa.wav"])
+     
     data = np.fromfile(f"tmp_{process_id}/image.dat", dtype=np.float32)
+    subprocess.run(["rm", "-f", f"tmp_{process_id}/image.dat"])
     counts = np.random.uniform(count_min, count_max)
     image = np.random.poisson(counts*data.reshape((nx, ny)))
     plt.imshow(image, cmap='gray')
     plt.axis('off')
-    out_image = f"{os.path.basename(sys.argv[1]).split('.')[0]}_{i_variant}.png"
-    plt.savefig(f"hrtem_images/{out_image}", bbox_inches='tight', pad_inches=0)
+    id_sim = f"{os.path.basename(sys.argv[1]).split('.')[0]}_{i_variant}"
+    plt.savefig(f"hrtem_images/{id_sim}.png", bbox_inches='tight', pad_inches=0)
     plt.close()
 
-    f = open(f"tmp_{process_id}/tmp.dat", "r")
-    contenu = f.read().strip()
-    param = contenu.split("\t")
-    f.close()
-    print(f"process : {process_id} ; data :{param[0]} {param[1]} {param[2]} {param[3]} {param[4]} {param[5]} {param[6]} {param[7]} {param[8]} {param[9]} {param[10]} {param[11]} {param[12]} {param[13]} {param[14]} {param[15]} {param[16]} {param[17]} {gyration_radius} {nat1} {nat2} {nat1_out} {nat2_out} {nat1_in} {nat2_in} {r_cm1[0]} {r_cm1[1]} {r_cm1[2]} {r_cm2[0]} {r_cm2[1]} {r_cm2[2]} {r_cm[0]} {r_cm[1]} {r_cm[2]} {d_com} {counts} {phi} {theta} {aberrations_values[0][0]} {aberrations_values[0][1]} {aberrations_values[1][0]} {aberrations_values[1][1]} {aberrations_values[2][0]} {aberrations_values[2][1]} {aberrations_values[3][0]} {aberrations_values[3][1]} {aberrations_values[4][0]} {aberrations_values[2][0]} {aberrations_values[2][1]} {aberrations_values[3][0]} {aberrations_values[3][1]} {aberrations_values[4][0]} {aberrations_values[4][1]} {aberrations_values[5][0]} {aberrations_values[5][1]} {aberrations_values[6][0]} {aberrations_values[6][1]}")
-
+    mask = first_column == os.path.basename(sys.argv[1]).split('.')[0]
+    param = md_data[mask][0]
     f = open(f"tmp_{process_id}/data.dat", "a")
-    print(param[0], param[1], param[2], param[3], param[4], param[5], param[6], param[7], param[8], param[9], param[10], param[11], param[12], param[13], param[14], param[15], param[16], param[17], gyration_radius, nat1, nat2, nat1_out, nat2_out, nat1_in, nat2_in, r_cm1[0], r_cm1[1], r_cm1[2], r_cm2[0], r_cm2[1], r_cm2[2], r_cm[0], r_cm[1], r_cm[2], d_com, counts, phi, theta, aberrations_values[0][0], aberrations_values[0][1], aberrations_values[1][0], aberrations_values[1][1], aberrations_values[2][0], aberrations_values[2][1], aberrations_values[3][0], aberrations_values[3][1], aberrations_values[4][0], aberrations_values[2][0], aberrations_values[2][1], aberrations_values[3][0], aberrations_values[3][1], aberrations_values[4][0], aberrations_values[4][1], aberrations_values[5][0], aberrations_values[5][1], aberrations_values[6][0], aberrations_values[6][1], sep="\t", file=f)
+    print(id_sim, param[1], param[2], param[3], param[4], param[5], param[6], param[7], param[8], param[9], param[10], param[11], param[12], param[13], param[14], param[15], param[16], param[17], gyration_radius, nat1, nat2, nat1_out, nat2_out, nat1_in, nat2_in, r_cm1[0], r_cm1[1], r_cm1[2], r_cm2[0], r_cm2[1], r_cm2[2], r_cm[0], r_cm[1], r_cm[2], d_com, counts, phi, theta, aberrations_values[0][0], aberrations_values[0][1], aberrations_values[1][0], aberrations_values[1][1], aberrations_values[2][0], aberrations_values[2][1], aberrations_values[3][0], aberrations_values[3][1], aberrations_values[4][0], aberrations_values[2][0], aberrations_values[2][1], aberrations_values[3][0], aberrations_values[3][1], aberrations_values[4][0], aberrations_values[4][1], aberrations_values[5][0], aberrations_values[5][1], aberrations_values[6][0], aberrations_values[6][1], sep="\t", file=f)
     f.close()

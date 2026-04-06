@@ -44,7 +44,7 @@ for xyz_file in files:
         pos_cluster = pos_cluster - np.sum(pos_cluster, axis=0)/size_cluster
         pos_cluster = pos_cluster - box * np.round(pos_cluster / box)
         pos_cluster = pos_cluster - np.sum(pos_cluster, axis=0)/size_cluster
-
+    
         with open("tmp_%s/xyz/%i_%i.xyz" %(process_id, nanoparticle_id, id_sim), "w") as file:
             print(size_cluster, file=file)
             print('Lattice="%f 0.0 0.0 0.0 %f 0.0 0.0 0.0 %f" Properties=species:S:1:pos:R:3:epot:R:1' % (box[0], box[1], box[2]), file=file)
