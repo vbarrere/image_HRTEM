@@ -1,7 +1,7 @@
 #!/bin/bash
 
-export path_xyz="../Data/MD_data/AgCo/XYZ"
-export electron_energy=300
+export path_xyz="../Data/MD_Data/AgCo/XYZ"
+export electron_energy=80
 export nz=10
 
 export process_id=$1

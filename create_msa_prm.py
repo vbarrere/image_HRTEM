@@ -9,9 +9,9 @@ nz = int(os.getenv('nz'))
 
 with open(f'tmp_{process_id}/msa.prm', 'w') as prm_file:
     print("'[Microscope Parameters]'", file=prm_file)
-    print(f"{25.0}                          (STEM probe forming aperture: radius (mrad), rel. asymmetry, asym. dir. (rad), rel. edge)", file=prm_file)
-    print(f"{80.0}                          (lower semi angle of image-space detector (mrad))", file=prm_file)
-    print(f"{220.0}                         (upper semi angle of image-space detector (mrad))", file=prm_file)
+    print(f"{30.0}                          (STEM probe forming aperture: radius (mrad), rel. asymmetry, asym. dir. (rad), rel. edge)", file=prm_file)
+    print(f"{60.0}                          (lower semi angle of image-space detector (mrad))", file=prm_file)
+    print(f"{200.0}                         (upper semi angle of image-space detector (mrad))", file=prm_file)
     print(f"{0} 'detectors.prm'             (switch for using a detector definition file, and the name of the detector definition file, attention: the output file name will change when using more than one detector, the detector definitions in the preceeding two lines are ignored when using a detector definition file, all detector definitions are ignord in CTEM mode)", file=prm_file)
     print(f"{electron_energy}               (electron wavelength (nm), <=1.0, alternatively, >1.0: electron energy (keV))", file=prm_file)
     print(f"{0.0}                           (de-magnified source radius (nm) for applying partial spatial coherence to STEM images)", file=prm_file)

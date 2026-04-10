@@ -9,7 +9,7 @@ import numpy as np
 process_id = os.getenv("process_id")
 path_xyz = os.getenv("path_xyz")
 
-md_data = np.genfromtxt(os.path.join(os.path.dirname(path_xyz), "d.dat"), dtype=None)
+md_data = np.genfromtxt(os.path.join(os.path.dirname(path_xyz), "data.dat"), dtype=None)
 first_column = np.array([row[0] for row in md_data])
 
 f = open("tmp_%s/tmp.dat" % process_id, "w")
