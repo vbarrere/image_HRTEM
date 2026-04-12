@@ -11,8 +11,6 @@ process_id = os.getenv("process_id")
 
 box = 100.0   # EN ANGSTROM
 n_variants = 10
-#dbf_ag = 0.008 # 0.01874717714107593 # 0.008 XXX
-#dbf_co = 0.004 # 0.014621188604821677 # 0.004 XXX
 dbf_ag = 0.019 # 0.008 XXX
 dbf_co = 0.015 # 0.004 XXX
 nx = 128
@@ -138,11 +136,9 @@ for i_variant in range(n_variants):
     subprocess.run(["celslc", "-cel", f"tmp_{process_id}/coord.cel", "-slc", f"tmp_{process_id}/slice", "-nx", str(nx), "-ny", str(ny), "-nz", str(nz), "-ht", str(electron_energy), "-dwf", "-abs"], stdout=subprocess.DEVNULL)
     subprocess.run(["rm", "-f", f"tmp_{process_id}/coord.cel"])
     subprocess.run(["msa", "-prm", f"tmp_{process_id}/msa.prm", "-out", f"tmp_{process_id}/msa.wav", "/ctem"], stdout=subprocess.DEVNULL)
-    #subprocess.run(["rm", "-f", f"tmp_{process_id}/slice*"])
     for fichier in glob.glob(f"tmp_{process_id}/*.sli"):
         os.remove(fichier)
     subprocess.run(["wavimg", "-prm", f"tmp_{process_id}/wavimg.prm", "-out", f"tmp_{process_id}/image.dat"], stdout=subprocess.DEVNULL)
-    #subprocess.run(["rm", "-f", f"tmp_{process_id}/msa.wav"])
     os.remove(f"tmp_{process_id}/msa_sl0{nz}.wav")
 
     data = np.fromfile(f"tmp_{process_id}/image.dat", dtype=np.float32)
@@ -150,7 +146,6 @@ for i_variant in range(n_variants):
     counts = np.random.uniform(count_min, count_max)
     data_normalized = (data - np.min(data)) / (np.max(data) - np.min(data))
     image = np.random.poisson(counts*data_normalized.reshape((nx, ny)))
-    #image = data.reshape((nx, ny))
 
     plt.imshow(image, cmap='gray')
     plt.axis('off')
