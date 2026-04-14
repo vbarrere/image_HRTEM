@@ -8,6 +8,8 @@ import sys
 import matplotlib.pyplot    as plt
 import numpy                as np
 
+from PIL import Image
+
 
 """ Parameters initialization """
 
@@ -96,7 +98,7 @@ for i_variant in range(n_variants):
 
 
 
-    """ Creation of the .cel file for celslc program """
+    """ Creation of the cel file for celslc program """
 
     atom_types = set(symbols)
     with open(f"tmp_{process_id}/coord.cel", 'w') as cel_file:
@@ -104,7 +106,7 @@ for i_variant in range(n_variants):
         for elem in atom_types:
             res += elem
         print(f"{res} {n_atoms}", file=cel_file)
-        print(0, box, box, box, 90.0, 90.0, 90.0, file=cel_file)
+        print(0, box*0.1, box*0.1, box*0.1, 90.0, 90.0, 90.0, file=cel_file)
         for i_atom in range(n_atoms):
             x = pos[i_atom][0]/box + 0.5
             y = pos[i_atom][1]/box + 0.5
@@ -182,15 +184,13 @@ for i_variant in range(n_variants):
 
     """ Save the HRTEM image """
 
-    plt.imshow(image, cmap='gray')
-    plt.axis('off')
-    id_sim = f"{os.path.basename(sys.argv[1]).split('.')[0]}_{i_variant}"
-    plt.savefig(f"hrtem_images/{id_sim}.png", bbox_inches='tight', pad_inches=0)
-    plt.close()
+    image = np.array(image/np.max(image)*255, dtype=np.uint8)
+    Image.fromarray(image).convert('L').save(f"hrtem_images/{id_sim}.png")
 
 
 
     """ Save the simulation parameters """
+
     mask = id_sim_column == os.path.basename(sys.argv[1]).split('.')[0]
     param = md_data[mask][0]
     f = open(f"tmp_{process_id}/data.dat", "a")
