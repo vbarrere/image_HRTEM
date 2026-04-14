@@ -183,7 +183,7 @@ for i_variant in range(n_variants):
 
 
     """ Save the HRTEM image """
-
+    id_sim = f"{os.path.basename(sys.argv[1]).split('.')[0]}_{i_variant}"
     image = np.array(image/np.max(image)*255, dtype=np.uint8)
     Image.fromarray(image).convert('L').save(f"hrtem_images/{id_sim}.png")
 
